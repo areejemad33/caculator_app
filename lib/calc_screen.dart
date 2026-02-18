@@ -11,38 +11,137 @@ class CalcScreen extends StatefulWidget {
 
 class _CalcScreenState extends State<CalcScreen> {
   String textView = "";
+  String result = "";
+  bool isResultShown = false;
 
   void onDigitClick(String digit) {
-    if (digit == "." && textView.contains(".")) return;
+     if (isResultShown) {
+    textView = "";     
+    result = "";
+    isResultShown = false;
+  }
+    if (digit == ".") {
+    
+      if (textView.isNotEmpty && textView[textView.length - 1] == ".") return;
+
+    
+      String lastNumber = "";
+      for (int i = textView.length - 1; i >= 0; i--) {
+        if ("0123456789".contains(textView[i])) {
+          lastNumber = textView[i] + lastNumber;
+        } else {
+          break;
+        }
+      }
+      if (lastNumber.contains(".")) return; 
+    }
+
     textView += digit;
     setState(() {});
   }
 
-  String savedNumber = "";
-  String savedOperator = "";
+void onOperatorClick(String operator) {
+  if (textView.isEmpty && result.isEmpty) return;
 
-  void onOperatorClick(String operator) {
-    if (savedNumber.isEmpty && savedOperator.isEmpty) {
-      savedNumber = textView;
-      savedOperator = operator;
-      textView = "";
-      setState(() {});
-    } else {
-      String res = calculate(savedNumber, textView, savedOperator);
 
-      savedNumber = res;
-      savedOperator = operator;
-      textView = "";
-      setState(() {});
-    }
+  if (isResultShown) {
+    textView = result;
+    result = "";
+    isResultShown = false;
   }
 
-  void onEqualClicked(String _) {
-    String res = calculate(savedNumber, textView, savedOperator);
-    textView = res;
-    savedNumber = "";
-    savedOperator = "";
-    setState(() {});
+
+  String lastChar = textView[textView.length - 1];
+  if ("+-*/".contains(lastChar)) return;
+
+  textView += operator; 
+  setState(() {});
+}
+
+void onEqualClicked(String _) {
+  String exp = textView; 
+
+
+  if (exp.isEmpty || "+-*/".contains(exp[exp.length - 1])) return;
+
+  String res = evaluateInfix(exp);
+  textView = res;      
+  result = res;        
+  isResultShown = true;
+  setState(() {});
+}
+
+  int precedence(String op) {
+    if (op == "+" || op == "-") return 1;
+    if (op == "*" || op == "/") return 2;
+    return 0;
+  }
+
+  List<String> infixToPostfix(String exp) {
+    List<String> output = [];
+    List<String> stack = [];
+
+    int i = 0;
+
+    while (i < exp.length) {
+      String ch = exp[i];
+
+      // رقم
+      if ("0123456789.".contains(ch)) {
+        String number = "";
+        while (i < exp.length && "0123456789.".contains(exp[i])) {
+          number += exp[i];
+          i++;
+        }
+        output.add(number);
+        continue;
+      }
+
+      // operator
+      if ("+-*/".contains(ch)) {
+        while (stack.isNotEmpty && precedence(stack.last) >= precedence(ch)) {
+          output.add(stack.removeLast());
+        }
+        stack.add(ch);
+      }
+
+      i++;
+    }
+
+    while (stack.isNotEmpty) {
+      output.add(stack.removeLast());
+    }
+
+    return output;
+  }
+
+  double evaluatePostfix(List<String> postfix) {
+    List<double> stack = [];
+
+    for (String token in postfix) {
+      if ("+-*/".contains(token)) {
+        double b = stack.removeLast();
+        double a = stack.removeLast();
+
+        if (token == "+") stack.add(a + b);
+        if (token == "-") stack.add(a - b);
+        if (token == "*") stack.add(a * b);
+        if (token == "/") stack.add(a / b);
+      } else {
+        stack.add(double.parse(token));
+      }
+    }
+
+    return stack.last;
+  }
+
+  String evaluateInfix(String exp) {
+    List<String> postfix = infixToPostfix(exp);
+    double result = evaluatePostfix(postfix);
+    if (result == result.toInt()) {
+      return result.toInt().toString();
+    }
+    return result.toString();
   }
 
   void onBackSpaceClicked(String _) {
@@ -53,27 +152,8 @@ class _CalcScreenState extends State<CalcScreen> {
 
   void clearAll(String _) {
     textView = "";
-    savedNumber = "";
-    savedOperator = "";
-    setState(() {
-      
-    });
-  }
 
-  String calculate(String lhs, String rhs, String operator) {
-    double n1 = double.parse(lhs);
-    double n2 = double.parse(rhs);
-    double res = 0;
-    if (operator == "+") {
-      res = n1 + n2;
-    } else if (operator == "-") {
-      res = n1 - n2;
-    } else if (operator == "*") {
-      res = n1 * n2;
-    } else if (operator == "/") {
-      res = n1 / n2;
-    }
-    return res.toString();
+    setState(() {});
   }
 
   @override
@@ -110,13 +190,13 @@ class _CalcScreenState extends State<CalcScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             CalcButton(
-                              digit: "AC",
+                              digit: "Ac",
                               bgColor: ColorsManager.lightGray,
                               fgColor: ColorsManager.white,
                               onClick: clearAll,
                             ),
                             CalcButton(
-                              digit: "X",
+                              digit: "x",
                               bgColor: ColorsManager.lightGray,
                               fgColor: ColorsManager.white,
                               onClick: onBackSpaceClicked,
@@ -224,5 +304,3 @@ class _CalcScreenState extends State<CalcScreen> {
     );
   }
 }
-
-
